@@ -7,7 +7,6 @@ import LoaderSpinner from './components/Loader';
 import Modal from './components/Modal';
 import Button from './components/Button';
 import pixabayApi from './servises/pixabay-api';
-// import { ReactComponent as LoupeIcon } from "./components/icons/loupe .svg";
 
 const Status = {
   IDLE: 'idle',
@@ -23,24 +22,9 @@ export default class App extends Component {
     error: null,
     status: Status.IDLE,
     page: 1,
+    largeImageURL: '',
     showModal: false,
   };
-
-  handleFormSubmit = imgName => {
-    this.setState({ imgName });
-  };
-
-  handleClickLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
-  };
-
-  // toggleModal = () => {
-  //   this.setState(({ showModal }) => ({
-  //     showModal: !showModal,
-  //   }));
-  // }
 
   componentDidUpdate(prevProps, prevState) {
     const prevImg = prevState.imgName;
@@ -53,19 +37,20 @@ export default class App extends Component {
 
       pixabayApi
         .fetchImgPixabay(nextImg)
-        .then(images =>
+        .then(images => {
+          if (images.hits.length === 0) {
+            return this.setState({
+              error: `Could not find picture for request ${nextImg}`,
+              status: Status.REJECTED,
+            });
+          }
           this.setState({
-            images: [...images.hits],
+            images: images.hits,
             status: Status.RESOLVED,
-          }),
-        )
+          });
+        })
         .catch(error => this.setState({ error, status: Status.REJECTED }));
-      // .finally(() => {
-      //   window.scrollTo({
-      //     top: document.documentElement.scrollHeight,
-      //     behavior: 'smooth',
-      //   });
-      // });
+      // this.resetPage();
     }
 
     if (prevPage !== nextPage) {
@@ -78,24 +63,48 @@ export default class App extends Component {
             status: Status.RESOLVED,
           }));
         })
-        .catch(error => this.setState({ error, status: Status.REJECTED }))
-        .finally(() => {
-          window.scrollTo({
-            top: document.documentElement.scrollHeight,
-            behavior: 'smooth',
-          });
-        });
+        .catch(error => this.setState({ error, status: Status.REJECTED }));
     }
   }
 
-  render() {
-    const { images, status, showModal } = this.state;
+  onScroll = () => {
+    setTimeout(() => {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: 'smooth',
+      });
+    }, 1000);
+  };
 
-    // imgName={imgName}  {images.length !== 0 && this.toggleModal
+  handleFormSubmit = imgName => {
+    this.setState({ imgName });
+  };
+
+  handleClickLoadMore = () => {
+    this.setState(prevState => ({
+      page: prevState.page + 1,
+    }));
+
+    this.onScroll();
+  };
+
+  toggleModal = largeImageURL => {
+    this.setState(({ showModal }) => ({
+      showModal: !showModal,
+    }));
+    this.setState({ largeImageURL: largeImageURL });
+  };
+
+  // resetPage = () => {
+  //   this.setState({ page: 1 });
+  // }
+
+  render() {
+    const { images, status, showModal, largeImageURL, error } = this.state;
     return (
       <div>
         <Searchbar onSubmit={this.handleFormSubmit} />
-        {status === Status.RESOLVED && images.length !== 0 && <ImageGallery images={images} />}
+        {status === Status.RESOLVED && images.length !== 0 && <ImageGallery images={images} onClose={this.toggleModal} />}
         {status === Status.PENDING && <LoaderSpinner />}
         {status === Status.RESOLVED && images.length !== 0 && (
           <Button onClick={this.handleClickLoadMore} aria-label="Найти картинку" />
@@ -103,9 +112,13 @@ export default class App extends Component {
 
         {showModal && (
           <Modal onClose={this.toggleModal}>
-            <h1>This content modal</h1>
-            {/* <button type='button' onClick={this.toggleModal}>Closed</button> */}
+            <img src={largeImageURL} alt={images.tags} />
           </Modal>
+        )}
+        {status === Status.REJECTED && (
+          <div style={{ textAlign: 'center', color: 'red' }}>
+            <p>{error}</p>
+          </div>
         )}
         <ToastContainer autoClose={3000} />
       </div>

@@ -1,10 +1,13 @@
 import PropTypes from 'prop-types';
+import s from './Button.module.css';
 
 const Button = ({ onClick, ...allProps }) => {
   return (
-    <button className="Button" type="button" onClick={onClick} {...allProps}>
-      Load more
-    </button>
+    <div style={{ textAlign: 'center' }}>
+      <button className={s.Button} type="button" onClick={onClick} {...allProps}>
+        Load more
+      </button>
+    </div>
   );
 };
 
