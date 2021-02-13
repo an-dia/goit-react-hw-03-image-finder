@@ -33,27 +33,31 @@ export default class App extends Component {
     const nextPage = this.state.page;
 
     if (prevImg !== nextImg) {
-      this.setState({ status: Status.PENDING });
+      this.setState({ images: [], page: 1, status: Status.PENDING });
 
       pixabayApi
         .fetchImgPixabay(nextImg)
         .then(images => {
           if (images.hits.length === 0) {
-            return this.setState({
-              error: `Could not find picture for request ${nextImg}`,
-              status: Status.REJECTED,
-            });
+            return Promise.reject(new Error(`Could not find picture for request ${nextImg}`));
+            // return this.setState({
+            //   error: `Could not find picture for request ${nextImg}`,
+            //   status: Status.REJECTED,
+            // });
           }
+
+          window.scrollTo({ top: 0 });
           this.setState({
             images: images.hits,
             status: Status.RESOLVED,
           });
         })
         .catch(error => this.setState({ error, status: Status.REJECTED }));
-      // this.resetPage();
     }
 
-    if (prevPage !== nextPage) {
+    if (prevPage !== nextPage && nextPage > 1) {
+      console.log('nextPage', prevPage);
+      console.log('nextPage', nextPage);
       this.setState({ status: Status.PENDING });
       pixabayApi
         .fetchImgPixabay(nextImg, nextPage)
@@ -62,18 +66,19 @@ export default class App extends Component {
             images: [...prevState.images, ...images.hits],
             status: Status.RESOLVED,
           }));
+
+          this.onScroll();
         })
         .catch(error => this.setState({ error, status: Status.REJECTED }));
+      // .finally(this.onScroll);
     }
   }
 
   onScroll = () => {
-    setTimeout(() => {
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: 'smooth',
-      });
-    }, 1000);
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth',
+    });
   };
 
   handleFormSubmit = imgName => {
@@ -85,7 +90,7 @@ export default class App extends Component {
       page: prevState.page + 1,
     }));
 
-    this.onScroll();
+    // this.onScroll();
   };
 
   toggleModal = largeImageURL => {
@@ -117,7 +122,7 @@ export default class App extends Component {
         )}
         {status === Status.REJECTED && (
           <div style={{ textAlign: 'center', color: 'red' }}>
-            <p>{error}</p>
+            <p>{error.message}</p>
           </div>
         )}
         <ToastContainer autoClose={3000} />
